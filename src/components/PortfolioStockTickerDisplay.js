@@ -13,6 +13,7 @@ const PortfolioStockTickerDisplay = () => {
     const [sellModalOpen, setSellModalOpen] = useState(false);
     const [selectedStock, setSelectedStock] = useState(null);
     const [buyQuantity, setBuyQuantity] = useState('');
+    const [sellQuantity, setSellQuantity] = useState('');
 
     useEffect(() => {
         const fetchStockData = async () => {
@@ -46,16 +47,18 @@ const PortfolioStockTickerDisplay = () => {
     const handleOpenSellModal = (stock) => {
         setSelectedStock(stock);
         setSellModalOpen(true);
+        setSellQuantity('');
     };
 
     const handleCloseSellModal = () => {
         setSellModalOpen(false);
+        setSellQuantity('');
 };
 
     const handleBuy = async () => {
         try {
             // Corrected the usage of template literals
-            await authenticatedAxiosPost(`/users/${auth.userId}/stocks/buy`, {
+            await authenticatedAxiosPost(`/users/${auth.userId}/buy/${selectedStock.symbol}`, {
                 symbol: selectedStock.symbol,
                 quantity: buyQuantity
             });
@@ -70,20 +73,19 @@ const PortfolioStockTickerDisplay = () => {
 
     const handleSell = async () => {
         try {
-            // Corrected the usage of template literals
-            await authenticatedAxiosPost(`/users/${auth.userId}/stocks/remove`, {
-                userId: auth.userId,
-                symbol: selectedStock.symbol
-                // Backend handles selling all shares of the symbol for the user
+            await authenticatedAxiosPost(`/users/${auth.userId}/remove/${selectedStock.symbol}`, {
+                quantity: sellQuantity // Make sure to send the correct quantity
             });
-
             handleCloseSellModal();
             // Optionally: Fetch updated stock data or trigger a global state update
+            // Reset the sell quantity state
+            setSellQuantity('');
         } catch (error) {
-           console.error("Error in selling data:", error);
+           console.error("Error in selling stocks:", error);
             // Handle error here if needed
         }
     };
+    
 
     return (
         <Card>
@@ -173,13 +175,23 @@ const PortfolioStockTickerDisplay = () => {
                 </DialogActions>
             </Dialog>
             <Dialog open={sellModalOpen} onClose={handleCloseSellModal}>
-                <DialogTitle>Sell All Shares of {selectedStock?.symbol}?</DialogTitle>
+                <DialogTitle>Sell Shares of {selectedStock?.symbol}</DialogTitle>
                 <DialogContent>
-                    This action will sell all shares of {selectedStock?.symbol}.
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        id="quantity"
+                        label="Quantity"
+                        type="number"
+                        fullWidth
+                        variant="outlined"
+                        value={sellQuantity}
+                        onChange={(e) => setSellQuantity(e.target.value)}
+                    />
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseSellModal}>Cancel</Button>
-                    <Button onClick={handleSell}>Sell All</Button>
+                    <Button onClick={handleSell}>Sell</Button>
                 </DialogActions>
             </Dialog>
         </Card>
