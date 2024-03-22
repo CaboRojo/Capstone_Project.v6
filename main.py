@@ -578,7 +578,7 @@ def remove_stocks(user_id, symbol):
 
 @app.route('/users/<int:user_id>/buy/<symbol>', methods=['POST'])
 @token_required
-def buy_stocks(user_id):
+def buy_stocks(user_id, symbol):
     if request.method == 'OPTIONS':
         return add_cors_headers(make_response())
     """
