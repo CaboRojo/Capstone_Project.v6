@@ -25,7 +25,14 @@ load_dotenv()  # This loads the env variables from .env file if present
 app = Flask(__name__)
 CORS(app)
 
-def add_cors_headers(response):
+def add_cors_headers(response_or_tuple):
+    if isinstance(response_or_tuple, tuple):
+        # Assuming the tuple format is (response_body, status_code)
+        response_body, status_code = response_or_tuple
+        response = make_response(response_body, status_code)
+    else:
+        response = response_or_tuple
+
     origin = request.headers.get('Origin')
     if origin:
         response.headers['Access-Control-Allow-Origin'] = origin
