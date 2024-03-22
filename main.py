@@ -64,7 +64,6 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Utility Function to Get User ID from JWT Token
 # This function extracts and returns the user ID from a provided JWT token.
 def get_user_id_from_token(token):
     try:
@@ -75,23 +74,13 @@ def get_user_id_from_token(token):
     except jwt.InvalidTokenError:
         abort(401, 'Invalid token.')  # Handle invalid token
 
-# Oracle Database Initialization
-# Initializes the Oracle client using the specified library directory. This step is necessary for Oracle database operations.
-# oracledb.init_oracle_client(lib_dir=r"C:\\Program Files\\Oracle\\instanclient-basic-windows.x64-21.13.0.0.0dbru\\instantclient_21_13")
 
-# Database Credentials and Connection String
-# These variables store the database username, password, and DSN (Data Source Name) for connecting to the Oracle database.
-# It's highly recommended to manage sensitive data like usernames and passwords securely, for example, via environment variables.
 un = 'DEVELOPER'  # Database username
 pw = 'AngeleeRiosRamon1999!'  # Database password - consider using a more secure approach for production
 dsn = "(description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-madrid-1.oraclecloud.com))(connect_data=(service_name=gd51c296542b64f_version3_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))"
 
-# # SQLAlchemy setup
-# Base = declarative_base()
-# engine = create_engine(f'oracle+cx_oracle://{un}:{pw}@{dsn}')
-# Session = sessionmaker(bind=engine)
 
-# Crear un pool de conexiones a la base de datos
+# Create a pool of connnecitons for my database 
 pool = oracledb.create_pool(user=un, password=pw, dsn=dsn)
 
 # Configuración de SQLAlchemy para Flask
@@ -244,6 +233,17 @@ def handle_login():
         db.session.rollback()
         app.logger.error(f"Database error during login: {e}")
         return jsonify({"error": "An internal error occurred"}), 500
+
+@app.route('/handle_logout', methods=['POST'])
+@token_required
+def handle_logout():
+    """
+    Instructs the client to delete the token, effectively logging the user out.
+    This endpoint does not perform any server-side token invalidation because JWTs are stateless.
+    Token invalidation strategies, like maintaining a token blacklist, can be implemented as needed.
+    """
+    # This is a placeholder response. The actual logout mechanism should ensure the client deletes the token.
+    return jsonify({"message": "Logout successful. Please delete the token client-side."}), 200
 
 class AlphaVantageAPI:
     """
@@ -421,7 +421,6 @@ class AssetDetailsAPI(MethodView):
                 # Calculate what percentage of the portfolio is made up by this stock
                 portfolio_percentage = (stock_value / float(total_portfolio_value)) * 100 if total_portfolio_value else 0
 
-                # Assuming you have a method or logic to retrieve the company name
                 # Placeholder for company_name - Ideally, replace 'Unknown' with actual logic to retrieve company names
                 company_names = {
                     "AAPL": "Apple Inc.",
