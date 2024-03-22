@@ -1,23 +1,23 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Button, Drawer, List, ListItem, ListItemText, CssBaseline, Box } from '@mui/material';
 import { useNavigate, Outlet } from 'react-router-dom'; // Import Outlet from 'react-router-dom'
-
+import {useAuth} from './auth';
 const drawerWidth = 240;
 
 export default function MainLayout({ children }) {
   const navigate = useNavigate();
-
+  const { clearAuth, authenticatedAxiosPost } = useAuth();
   const menuItems = [
     { text: 'Page 1', path: '/page1' },
     { text: 'Page 2', path: '/page2' },
     // Add more navigation items here
   ];
 
-  const handleLogout = () => {
-    // Placeholder for logout functionality
-    console.log('User logged out');
-    // Redirect user to login page or handle logout
-    navigate('/login');
+  const handleLogout = async () => {
+    // Call the /handle_logout endpoint
+    await authenticatedAxiosPost('/handle_logout', {});
+    clearAuth(); // Clear authentication state client-side
+    navigate('/login'); // Redirect to login page
   };
 
   return (
