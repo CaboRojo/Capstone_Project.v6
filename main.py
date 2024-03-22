@@ -506,7 +506,7 @@ class StockTransactionAPI(MethodView):
             response = jsonify({"error": f"Failed to purchase stock: {e}"})
             return add_cors_headers(response), 500
 
-    def remove_stock(self, user_id, symbol):
+    def remove_stock(self, user_id, symbol, quantity):
         try:
             portfolio_detail = PortfolioDetail.query.join(Portfolio).filter(
                 Portfolio.USERID == user_id,
@@ -516,50 +516,67 @@ class StockTransactionAPI(MethodView):
             if not portfolio_detail:
                 return jsonify({"error": "Stock not found in portfolio."}), 404
 
+            if quantity <= 0 or quantity > portfolio_detail.QUANTITY:
+                return jsonify({"error": "Invalid quantity."}), 400
+
             portfolio = Portfolio.query.filter_by(USERID=user_id).first()
+
+            updated_total_stock_value = portfolio_detail.TOTALSTOCKVALUE * ((portfolio_detail.QUANTITY - quantity) / portfolio_detail.QUANTITY)
+
+            # Update the quantity and total stock value
+            portfolio_detail.QUANTITY -= quantity
+            portfolio_detail.TOTALSTOCKVALUE = updated_total_stock_value
 
             transaction = Transaction(
                 PORTFOLIOID=portfolio.PORTFOLIOID,
                 SYMBOL=symbol,
                 TRANSACTIONDATE=datetime.utcnow(),
-                QUANTITY=-portfolio_detail.QUANTITY,
+                QUANTITY=-quantity,
                 TRANSACTIONPRICE=portfolio_detail.LASTCLOSINGPRICE,
-                CURRENTTOTALVALUE=portfolio.TOTALPORTFOLIOVALUE - portfolio_detail.TOTALSTOCKVALUE,
+                CURRENTTOTALVALUE=portfolio_detail.TOTALSTOCKVALUE,
                 TRANSACTIONTYPE='sell'
             )
             db.session.add(transaction)
 
-            portfolio.TOTALPORTFOLIOVALUE -= portfolio_detail.TOTALSTOCKVALUE
-            db.session.delete(portfolio_detail)
+            # Update portfolio total value
+            portfolio.TOTALPORTFOLIOVALUE -= (portfolio_detail.LASTCLOSINGPRICE * quantity)
+
+            if portfolio_detail.QUANTITY == 0:
+                db.session.delete(portfolio_detail)
 
             db.session.commit()
 
-            response = jsonify({"message": f"Successfully sold all shares of {symbol}."})
+            message = f"Successfully sold {quantity} shares of {symbol}."
+            if portfolio_detail.QUANTITY == 0:
+                message = f"Successfully sold all shares of {symbol}."
+
+            response = jsonify({"message": message})
             return add_cors_headers(response), 200
         except Exception as e:
             app.logger.error(f"Error: {e}")
             response = jsonify({"error": f"Failed to sell stock: {e}"})
             return add_cors_headers(response), 500
 
+
 # Route for removing stocks from a user's portfolio
-@app.route('/users/<int:user_id>/remove', methods=['POST', 'OPTIONS'])
+@app.route('/users/<int:user_id>/remove/<symbol>', methods=['POST'])
 @token_required
-def remove_stocks(user_id):
+def remove_stocks(user_id, symbol):
     if request.method == 'OPTIONS':
         return add_cors_headers(make_response())
-    """
-    Endpoint for removing all shares of a specific stock from a user's portfolio.
-    """
+    
     data = request.get_json()
     symbol = data.get('symbol')
+    quantity = int(data.get('quantity', 0))  # Added quantity parameter
     
-    # Call the StockTransactionAPI method for removing stock
+    # Call the StockTransactionAPI method for removing stock with the specified quantity
     transaction_api = StockTransactionAPI()
-    result = transaction_api.remove_stock(user_id, symbol)
+    result = transaction_api.remove_stock(user_id, symbol, quantity)
     
     return add_cors_headers(result)
 
-@app.route('/users/<int:user_id>/stocks/buy', methods=['POST', 'OPTIONS'])
+
+@app.route('/users/<int:user_id>/buy/<symbol>', methods=['POST'])
 @token_required
 def buy_stocks(user_id):
     if request.method == 'OPTIONS':
